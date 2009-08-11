@@ -71,8 +71,18 @@ module Gattica
       @user_accounts = nil                    # filled in later if the user ever calls Gattica::Engine#accounts
       @headers = {}.merge(@options[:headers]) # headers used for any HTTP requests (Google requires a special 'Authorization' header which is set any time @token is set)
       
-      # save an http connection for everyone to use
-      @http = Net::HTTP.new(SERVER, PORT)
+      # save a proxy-aware http connection for everyone to use
+      proxy_host = nil
+      proxy_port = nil
+      proxy_var  = SECURE ? 'https_proxy' : 'http_proxy'
+      [proxy_var, proxy_var.upcase].each do |pxy|
+        if ENV[pxy]
+          uri = URI::parse(ENV[pxy])
+          proxy_host = uri.host
+          proxy_port = uri.port
+        end
+      end
+      @http = Net::HTTP::Proxy(proxy_host,proxy_port).new(SERVER, PORT)
       @http.use_ssl = SECURE
       @http.set_debug_output $stdout if @options[:debug]
       
@@ -221,6 +231,10 @@ module Gattica
         output += '&sort=' + args[:sort].collect do |sort|
           sort[0..0] == '-' ? "-ga:#{sort[1..-1]}" : "ga:#{sort}"  # if the first character is a dash, move it before the ga:
         end.join(',')
+      end
+
+      unless args[:max_results].nil?
+        output += '&max-results=' + args[:max_results].to_s
       end
       
       # TODO: update so that in regular expression filters (=~ and !~), any initial special characters in the regular expression aren't also picked up as part of the operator (doesn't cause a problem, but just feels dirty)
