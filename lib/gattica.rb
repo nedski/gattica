@@ -166,8 +166,9 @@ module Gattica
     def get(args={})
       args = validate_and_clean(DEFAULT_ARGS.merge(args))
       query_string = build_query_string(args,@profile_id)
-        @logger.debug(query_string) if @debug
+      @logger.debug(query_string)
       data = do_http_get("/analytics/feeds/data?#{query_string}")
+      @logger.debug(data)
       return DataSet.new(Hpricot.XML(data))
     end
     
